@@ -1,13 +1,14 @@
 import {
   collection,
-  addDoc,
   updateDoc,
   doc,
   onSnapshot,
   query,
   orderBy,
   serverTimestamp,
+  setDoc,
 } from 'firebase/firestore'
+import { ulid } from 'ulid'
 
 export type Role = 'kapal' | 'purchasing'
 
@@ -34,9 +35,8 @@ export interface ItemBarang {
 
 export interface PengajuanPO {
   id: string
-  noSPB?: string        // Nomor SPB dari pihak kapal
-  namaKapal?: string    // Nama kapal pengaju
-  noPO?: string
+  noSPB?: string        // Nomor SPB — acuan utama
+  namaKapal?: string
   noTracking?: string
   lokasiDocking?: string
   status: StatusPO
@@ -70,7 +70,6 @@ export const useStore = () => {
           id: d.id,
           noSPB: data.noSPB,
           namaKapal: data.namaKapal,
-          noPO: data.noPO,
           noTracking: data.noTracking,
           lokasiDocking: data.lokasiDocking,
           status: data.status,
@@ -110,7 +109,7 @@ export const useStore = () => {
         const belumCount = po.items.filter((i: ItemBarang) => i.statusInstalasi !== 'terpasang').length
         notifications.value.unshift({
           id: key,
-          pesan: `${po.noSPB || po.noPO || 'SPB'} — ${po.namaKapal || 'Kapal'}: ${belumCount} barang tiba belum dipasang`,
+          pesan: `${po.noSPB || 'SPB'} — ${po.namaKapal || 'Kapal'}: ${belumCount} barang tiba belum dipasang`,
           waktu: 'Reminder otomatis',
           dibaca: false,
           type: 'reminder',
@@ -128,7 +127,8 @@ export const useStore = () => {
     createdBy?: string
   }) => {
     const today = new Date().toISOString().split('T')[0]
-    const ref = await addDoc(collection(db, 'pengajuan'), {
+    const id = ulid()                          // ULID sebagai document ID
+    await setDoc(doc(db, 'pengajuan', id), {
       status: 'diajukan',
       tanggalPengajuan: today,
       noSPB: data.noSPB,
@@ -140,8 +140,8 @@ export const useStore = () => {
       reminderSent: false,
       createdAt: serverTimestamp(),
     })
-    addNotif(`📋 SPB ${data.noSPB} — ${data.items.length} barang dikirim ke Purchasing`)
-    return ref.id
+    addNotif(`SPB ${data.noSPB} — ${data.items.length} barang dikirim ke Purchasing`)
+    return id
   }
 
   const updatePO = async (id: string, updates: Partial<PengajuanPO>) => {
@@ -176,7 +176,7 @@ export const useStore = () => {
       ...(allDone ? { status: 'selesai' } : {}),
       updatedAt: serverTimestamp(),
     })
-    if (allDone) addNotif(`Semua barang PO ${po.noPO || poId} telah terpasang!`)
+    if (allDone) addNotif(`Semua barang SPB ${po.noSPB || poId} telah terpasang!`)
   }
 
   const addNotif = (pesan: string) => {

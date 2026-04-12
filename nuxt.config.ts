@@ -1,10 +1,12 @@
 export default defineNuxtConfig({
   compatibilityDate: '2026-04-12',
   devtools: { enabled: false },
-  nitro: {
-    preset: 'vercel',
+  nitro: { preset: 'vercel' },
+  modules: ['@nuxtjs/tailwindcss', 'shadcn-nuxt'],
+  shadcn: {
+    prefix: '',
+    componentDir: './components/ui',
   },
-  modules: ['@nuxtjs/tailwindcss'],
   tailwindcss: {
     cssPath: '~/assets/css/tailwind.css',
   },
@@ -20,10 +22,20 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
-      title: 'Ship Procurement System',
+      title: 'Ship Procurement',
       meta: [
-        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        { name: 'description', content: 'Sistem Pengadaan Barang Kapal' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
+        { name: 'description', content: 'Sistem Pengadaan Barang Kapal — BSL & SPT' },
+        // PWA / native feel
+        { name: 'mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
+        { name: 'apple-mobile-web-app-title', content: 'Ship Procurement' },
+        { name: 'theme-color', content: '#ffffff' },
+        { name: 'format-detection', content: 'telephone=no' },
+      ],
+      link: [
+        { rel: 'manifest', href: '/manifest.json' },
       ],
     },
   },

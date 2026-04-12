@@ -8,7 +8,7 @@ export const useExport = () => {
 
     // Header
     rows.push([
-      'No. PO', 'No. SPB', 'Nama Kapal', 'Status', 'Tgl Pengajuan',
+      'No. SPB', 'Nama Kapal', 'Status', 'Tgl Pengajuan',
       'Lokasi Docking', 'No. Tracking', 'Tgl Tiba',
       'Nama Barang', 'Qty', 'Spesifikasi', 'Urgensi',
       'Status Instalasi', 'Lokasi Pasang', 'Teknisi', 'Tgl Dipasang', 'Ada Foto'
@@ -17,14 +17,14 @@ export const useExport = () => {
     poList.forEach(po => {
       if (po.items.length === 0) {
         rows.push([
-          po.noPO || '', po.noSPB || '', po.namaKapal || '', po.status,
+          po.noSPB || '', po.namaKapal || '', po.status,
           po.tanggalPengajuan, po.lokasiDocking || '', po.noTracking || '', po.tanggalTiba || '',
           '-', '-', '-', '-', '-', '-', '-', '-', '-'
         ])
       } else {
         po.items.forEach(item => {
           rows.push([
-            po.noPO || '', po.noSPB || '', po.namaKapal || '', po.status,
+            po.noSPB || '', po.namaKapal || '', po.status,
             po.tanggalPengajuan, po.lokasiDocking || '', po.noTracking || '', po.tanggalTiba || '',
             item.nama, String(item.qty), item.spesifikasi, item.urgensi,
             item.statusInstalasi, item.lokasiPasang || '', item.teknisi || '',
@@ -50,13 +50,13 @@ export const useExport = () => {
 
     const rows = poList.flatMap(po =>
       po.items.length === 0
-        ? [`<tr>
-            <td>${po.noPO || '-'}</td><td>${po.noSPB || '-'}</td><td>${po.namaKapal || '-'}</td>
+        : [`<tr>
+            <td>${po.noSPB || '-'}</td><td>${po.namaKapal || '-'}</td>
             <td>${po.status}</td><td>${po.tanggalPengajuan}</td><td>${po.lokasiDocking || '-'}</td>
             <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
            </tr>`]
         : po.items.map(item => `<tr>
-            <td>${po.noPO || '-'}</td><td>${po.noSPB || '-'}</td><td>${po.namaKapal || '-'}</td>
+            <td>${po.noSPB || '-'}</td><td>${po.namaKapal || '-'}</td>
             <td>${po.status}</td><td>${po.tanggalPengajuan}</td><td>${po.lokasiDocking || '-'}</td>
             <td>${item.nama}</td><td>${item.qty}</td><td>${item.urgensi}</td>
             <td>${item.statusInstalasi}</td><td>${item.teknisi || '-'}</td>
@@ -96,7 +96,7 @@ export const useExport = () => {
   <table>
     <thead>
       <tr>
-        <th>No. PO</th><th>No. SPB</th><th>Kapal</th><th>Status</th>
+        <th>No. SPB</th><th>Kapal</th><th>Status</th>
         <th>Tgl Pengajuan</th><th>Docking</th>
         <th>Barang</th><th>Qty</th><th>Urgensi</th>
         <th>Instalasi</th><th>Teknisi</th>

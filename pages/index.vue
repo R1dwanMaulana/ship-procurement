@@ -1,93 +1,91 @@
 <template>
-  <div class="p-4 space-y-5">
-    <!-- Header -->
-    <div :class="['rounded-2xl p-5 text-white', role === 'kapal' ? 'bg-blue-600' : 'bg-emerald-600']">
-      <p class="text-sm opacity-80">Selamat datang,</p>
-      <h1 class="text-xl font-bold mt-0.5">{{ userProfile?.nama }}</h1>
-      <p class="text-xs opacity-70 mt-1">{{ today }}</p>
+  <div class="p-4 space-y-6">
+
+    <!-- Header greeting -->
+    <div class="pt-1">
+      <p class="text-xs text-muted-foreground">Selamat datang,</p>
+      <h1 class="text-xl font-semibold tracking-tight mt-0.5">{{ userProfile?.nama }}</h1>
+      <p class="text-xs text-muted-foreground mt-0.5">{{ today }}</p>
     </div>
 
     <!-- Alert belum pasang -->
-    <div v-if="role === 'purchasing' && stats.belumPasang > 0" class="alert-danger">
-      <div class="flex items-start gap-3">
-        <AppIcon name="alert" :size="18" class="text-red-500 flex-shrink-0 mt-0.5" />
-        <div class="flex-1">
-          <p class="font-semibold text-red-700 text-sm">{{ stats.belumPasang }} PO belum dipasang</p>
-          <p class="text-xs text-red-500 mt-0.5">Barang sudah tiba tapi belum diinstalasi</p>
-        </div>
-        <NuxtLink to="/laporan" class="text-xs font-semibold text-red-600 underline whitespace-nowrap">Lihat</NuxtLink>
+    <div v-if="role === 'purchasing' && stats.belumPasang > 0"
+      class="rounded-lg border border-border bg-secondary p-3 flex items-start gap-3">
+      <AppIcon name="alert" :size="15" class="text-foreground flex-shrink-0 mt-0.5" />
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium">{{ stats.belumPasang }} PO belum dipasang</p>
+        <p class="text-xs text-muted-foreground mt-0.5">Barang sudah tiba tapi belum diinstalasi</p>
       </div>
+      <NuxtLink to="/laporan">
+        <Button variant="outline" size="sm">Lihat</Button>
+      </NuxtLink>
     </div>
 
     <!-- Stats -->
     <div>
-      <p class="section-title">Ringkasan</p>
-      <div class="grid grid-cols-2 gap-3">
-        <div class="card-flat text-center py-4">
-          <p class="text-3xl font-bold text-amber-500">{{ stats.diajukan }}</p>
-          <p class="text-xs text-slate-500 mt-1">Menunggu Validasi</p>
-        </div>
-        <div class="card-flat text-center py-4">
-          <p class="text-3xl font-bold text-violet-500">{{ stats.dikirim }}</p>
-          <p class="text-xs text-slate-500 mt-1">Dalam Pengiriman</p>
-        </div>
-        <div class="card-flat text-center py-4">
-          <p class="text-3xl font-bold text-orange-500">{{ stats.tiba + stats.dikonfirmasi }}</p>
-          <p class="text-xs text-slate-500 mt-1">Tiba di Pelabuhan</p>
-        </div>
-        <div class="card-flat text-center py-4">
-          <p class="text-3xl font-bold text-emerald-500">{{ stats.selesai }}</p>
-          <p class="text-xs text-slate-500 mt-1">Selesai</p>
-        </div>
+      <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Ringkasan</p>
+      <div class="grid grid-cols-2 gap-2">
+        <Card class="p-4">
+          <p class="text-2xl font-bold">{{ stats.diajukan }}</p>
+          <p class="text-xs text-muted-foreground mt-1">Menunggu Validasi</p>
+        </Card>
+        <Card class="p-4">
+          <p class="text-2xl font-bold">{{ stats.dikirim }}</p>
+          <p class="text-xs text-muted-foreground mt-1">Dalam Pengiriman</p>
+        </Card>
+        <Card class="p-4">
+          <p class="text-2xl font-bold">{{ stats.tiba + stats.dikonfirmasi }}</p>
+          <p class="text-xs text-muted-foreground mt-1">Tiba di Pelabuhan</p>
+        </Card>
+        <Card class="p-4">
+          <p class="text-2xl font-bold">{{ stats.selesai }}</p>
+          <p class="text-xs text-muted-foreground mt-1">Selesai</p>
+        </Card>
       </div>
     </div>
 
     <!-- Quick Actions -->
     <div>
-      <p class="section-title">Aksi Cepat</p>
-      <div class="space-y-2">
+      <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Aksi Cepat</p>
+      <div class="space-y-1">
         <template v-if="role === 'kapal'">
-          <NuxtLink to="/pengajuan/buat" class="card flex items-center gap-3 active:bg-slate-50">
-            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 flex-shrink-0">
-              <AppIcon name="file" :size="18" />
-            </div>
+          <NuxtLink to="/pengajuan/buat"
+            class="flex items-center gap-3 rounded-lg px-3 py-3 hover:bg-accent transition-colors press">
+            <AppIcon name="file" :size="16" class="text-muted-foreground flex-shrink-0" />
             <div class="flex-1">
-              <p class="font-semibold text-sm text-slate-800">Buat Pengajuan PO</p>
-              <p class="text-xs text-slate-400">Ajukan beberapa barang sekaligus</p>
+              <p class="text-sm font-medium">Buat Pengajuan PO</p>
+              <p class="text-xs text-muted-foreground">Ajukan beberapa barang sekaligus</p>
             </div>
-            <AppIcon name="chevronRight" :size="16" class="text-slate-300" />
+            <AppIcon name="chevronRight" :size="14" class="text-muted-foreground" />
           </NuxtLink>
-          <NuxtLink to="/tracking" class="card flex items-center gap-3 active:bg-slate-50">
-            <div class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 flex-shrink-0">
-              <AppIcon name="map" :size="18" />
-            </div>
+          <NuxtLink to="/tracking"
+            class="flex items-center gap-3 rounded-lg px-3 py-3 hover:bg-accent transition-colors press">
+            <AppIcon name="map" :size="16" class="text-muted-foreground flex-shrink-0" />
             <div class="flex-1">
-              <p class="font-semibold text-sm text-slate-800">Pantau Pengiriman</p>
-              <p class="text-xs text-slate-400">Status barang real-time</p>
+              <p class="text-sm font-medium">Pantau Pengiriman</p>
+              <p class="text-xs text-muted-foreground">Status barang real-time</p>
             </div>
-            <AppIcon name="chevronRight" :size="16" class="text-slate-300" />
+            <AppIcon name="chevronRight" :size="14" class="text-muted-foreground" />
           </NuxtLink>
         </template>
         <template v-else>
-          <NuxtLink to="/pengajuan" class="card flex items-center gap-3 active:bg-slate-50">
-            <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 flex-shrink-0">
-              <AppIcon name="check" :size="18" />
-            </div>
+          <NuxtLink to="/pengajuan"
+            class="flex items-center gap-3 rounded-lg px-3 py-3 hover:bg-accent transition-colors press">
+            <AppIcon name="check" :size="16" class="text-muted-foreground flex-shrink-0" />
             <div class="flex-1">
-              <p class="font-semibold text-sm text-slate-800">Validasi Pengajuan</p>
-              <p class="text-xs text-slate-400">{{ stats.diajukan }} PO menunggu</p>
+              <p class="text-sm font-medium">Validasi Pengajuan</p>
+              <p class="text-xs text-muted-foreground">{{ stats.diajukan }} PO menunggu</p>
             </div>
-            <AppIcon name="chevronRight" :size="16" class="text-slate-300" />
+            <AppIcon name="chevronRight" :size="14" class="text-muted-foreground" />
           </NuxtLink>
-          <NuxtLink to="/tracking" class="card flex items-center gap-3 active:bg-slate-50">
-            <div class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 flex-shrink-0">
-              <AppIcon name="truck" :size="18" />
-            </div>
+          <NuxtLink to="/tracking"
+            class="flex items-center gap-3 rounded-lg px-3 py-3 hover:bg-accent transition-colors press">
+            <AppIcon name="truck" :size="16" class="text-muted-foreground flex-shrink-0" />
             <div class="flex-1">
-              <p class="font-semibold text-sm text-slate-800">Update Pengiriman</p>
-              <p class="text-xs text-slate-400">Input tracking & status tiba</p>
+              <p class="text-sm font-medium">Update Pengiriman</p>
+              <p class="text-xs text-muted-foreground">Input tracking & status tiba</p>
             </div>
-            <AppIcon name="chevronRight" :size="16" class="text-slate-300" />
+            <AppIcon name="chevronRight" :size="14" class="text-muted-foreground" />
           </NuxtLink>
         </template>
       </div>
@@ -95,32 +93,40 @@
 
     <!-- Recent PO -->
     <div>
-      <p class="section-title">PO Terbaru</p>
-      <div v-if="loadingPO" class="text-center py-8 text-slate-400 text-sm">Memuat...</div>
+      <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">PO Terbaru</p>
+      <div v-if="loadingPO" class="text-center py-8 text-sm text-muted-foreground">Memuat...</div>
       <div v-else class="space-y-2">
-        <div v-for="po in recentPO" :key="po.id" class="card space-y-2">
+        <Card v-for="po in recentPO" :key="po.id" class="p-4 space-y-2">
           <div class="flex items-start justify-between gap-2">
-            <div>
-              <p class="font-semibold text-sm text-slate-800">{{ po.noPO || po.noSPB || 'Pengajuan baru' }}</p>
-              <p class="text-xs text-slate-400 mt-0.5">{{ po.namaKapal }} · {{ po.items.length }} barang</p>
+            <div class="min-w-0">
+              <p class="text-sm font-medium truncate">{{ po.noSPB || 'Pengajuan baru' }}</p>
+              <p class="text-xs text-muted-foreground mt-0.5">{{ po.namaKapal }} · {{ po.items.length }} barang</p>
             </div>
-            <span :class="['status-pill', statusColor(po.status)]">{{ statusLabel(po.status) }}</span>
+            <Badge :variant="statusVariant(po.status)">{{ statusLabel(po.status) }}</Badge>
           </div>
           <div class="flex flex-wrap gap-1">
             <span v-for="item in po.items.slice(0,3)" :key="item.nama"
-              class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">{{ item.nama }}</span>
-            <span v-if="po.items.length > 3" class="text-xs text-slate-400 px-2 py-0.5">+{{ po.items.length - 3 }}</span>
+              class="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-sm">{{ item.nama }}</span>
+            <span v-if="po.items.length > 3" class="text-xs text-muted-foreground">+{{ po.items.length - 3 }}</span>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import type { StatusPO } from '~/composables/useStore'
+
 const { userProfile } = useAuth()
-const { poList, loadingPO, stats, statusLabel, statusColor } = useStore()
+const { poList, loadingPO, stats, statusLabel } = useStore()
 const role = computed(() => userProfile.value?.role ?? 'kapal')
 const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 const recentPO = computed(() => poList.value.slice(0, 4))
+
+const statusVariant = (status: StatusPO): any => {
+  if (status === 'selesai') return 'outline'
+  if (status === 'diajukan') return 'secondary'
+  return 'secondary'
+}
 </script>

@@ -1,4 +1,5 @@
 export default defineNuxtRouteMiddleware(async (to) => {
+  // Firebase hanya tersedia di client
   if (import.meta.server) return
 
   const { currentUser, userProfile, authLoading, initAuth } = useAuth()
@@ -17,7 +18,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/')
   }
 
-  // Batasi akses laporan hanya untuk purchasing
+  // Laporan hanya untuk purchasing
   if (to.path === '/laporan' && userProfile.value?.role === 'kapal') {
     return navigateTo('/')
   }
