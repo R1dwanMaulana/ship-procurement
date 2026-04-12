@@ -7,6 +7,7 @@ import {
   orderBy,
   serverTimestamp,
   setDoc,
+  arrayUnion,
 } from 'firebase/firestore'
 import { ulid } from 'ulid'
 
@@ -30,17 +31,26 @@ export interface ItemBarang {
   lokasiPasang?: string
   teknisi?: string
   tanggalDipasang?: string
-  fotoBukti?: string   // URL foto dari Firebase Storage
+  fotoBukti?: string
+  catatan?: string          // Fitur 6: catatan per item
+}
+
+export interface LogEntry {
+  waktu: string
+  aksi: string
+  oleh: string
+  detail?: string
 }
 
 export interface PengajuanPO {
   id: string
-  noSPB?: string        // Nomor SPB — acuan utama
+  noSPB?: string
   namaKapal?: string
   noTracking?: string
   lokasiDocking?: string
   status: StatusPO
   tanggalPengajuan: string
+  estimasiTiba?: string     // Fitur 1: estimasi tiba
   tanggalTiba?: string
   catatanKapal?: string
   catatanPurchasing?: string
@@ -48,21 +58,30 @@ export interface PengajuanPO {
   items: ItemBarang[]
   reminderSent?: boolean
   reminderCount: number
+  log?: LogEntry[]          // Fitur 5: history log
 }
 
 const poList = ref<PengajuanPO[]>([])
 const loadingPO = ref(false)
 let unsubscribe: (() => void) | null = null
 
-const notifications = ref<{ id: string; pesan: string; waktu: string; dibaca: boolean; type?: string; poId?: string }[]>([])
+const notifications = ref<{
+  id: string
+  pesan: string
+  waktu: string
+  dibaca: boolean
+  type?: string
+  poId?: string
+}[]>([])
 
 export const useStore = () => {
-  const { db } = useFirebase()
+  const nuxtApp = useNuxtApp()
+  const getDb = () => nuxtApp.$firebaseDb as import('firebase/firestore').Firestore
 
   const startListening = (role?: string) => {
     if (unsubscribe) return
     loadingPO.value = true
-    const q = query(collection(db, 'pengajuan'), orderBy('createdAt', 'desc'))
+    const q = query(collection(getDb(), 'pengajuan'), orderBy('createdAt', 'desc'))
     unsubscribe = onSnapshot(q, (snap) => {
       poList.value = snap.docs.map((d) => {
         const data = d.data()
@@ -74,6 +93,7 @@ export const useStore = () => {
           lokasiDocking: data.lokasiDocking,
           status: data.status,
           tanggalPengajuan: data.tanggalPengajuan,
+          estimasiTiba: data.estimasiTiba,
           tanggalTiba: data.tanggalTiba,
           catatanKapal: data.catatanKapal,
           catatanPurchasing: data.catatanPurchasing,
@@ -81,10 +101,12 @@ export const useStore = () => {
           items: data.items ?? [],
           reminderSent: data.reminderSent ?? false,
           reminderCount: data.reminderCount ?? 0,
+          log: data.log ?? [],
         } as PengajuanPO
       })
       loadingPO.value = false
       checkReminders(role)
+      checkEstimasiTiba(role)
     })
   }
 
@@ -93,18 +115,43 @@ export const useStore = () => {
     unsubscribe = null
   }
 
-  // Cek barang yang sudah tiba tapi belum semua dipasang → kirim reminder KHUSUS purchasing
-  const checkReminders = (role?: string) => {
-    // Hanya generate reminder jika role purchasing
-    if (role !== 'purchasing') return
+  // Fitur 1: cek estimasi tiba H-1
+  const checkEstimasiTiba = (role?: string) => {
+    if (!role) return
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowStr = tomorrow.toISOString().split('T')[0]
 
+    poList.value.forEach((po: PengajuanPO) => {
+      if (po.status === 'dikirim' && po.estimasiTiba === tomorrowStr) {
+        const key = `eta-${po.id}-${tomorrowStr}`
+        const sudahAda = notifications.value.find((n) => n.id === key)
+        if (!sudahAda) {
+          notifications.value.unshift({
+            id: key,
+            pesan: role === 'kapal'
+              ? `${po.noSPB} — barang tiba besok (${tomorrowStr}), siapkan penerimaan`
+              : `${po.noSPB} — estimasi tiba besok di ${po.lokasiDocking || 'pelabuhan'}`,
+            waktu: 'Notif H-1',
+            dibaca: false,
+            type: 'eta',
+            poId: po.id,
+          })
+        }
+      }
+    })
+  }
+
+  // Fitur 7: reminder belum pasang khusus purchasing
+  const checkReminders = (role?: string) => {
+    if (role !== 'purchasing') return
     const belumPasang = poList.value.filter((po: PengajuanPO) =>
       po.status === 'dikonfirmasi' &&
       po.items.some((i: ItemBarang) => i.statusInstalasi !== 'terpasang')
     )
     belumPasang.forEach((po: PengajuanPO) => {
       const key = `reminder-${po.id}`
-      const sudahAda = notifications.value.find((n: { id: string }) => n.id === key)
+      const sudahAda = notifications.value.find((n) => n.id === key)
       if (!sudahAda) {
         const belumCount = po.items.filter((i: ItemBarang) => i.statusInstalasi !== 'terpasang').length
         notifications.value.unshift({
@@ -119,16 +166,36 @@ export const useStore = () => {
     })
   }
 
+  // Fitur 5: tambah log entry
+  const addLog = async (poId: string, aksi: string, oleh: string, detail?: string) => {
+    const entry: LogEntry = {
+      waktu: new Date().toISOString(),
+      aksi,
+      oleh,
+      detail,
+    }
+    await updateDoc(doc(getDb(), 'pengajuan', poId), {
+      log: arrayUnion(entry),
+    })
+  }
+
   const createPO = async (data: {
     noSPB: string
     namaKapal: string
     items: ItemBarang[]
     catatanKapal?: string
     createdBy?: string
+    namaUser?: string
   }) => {
     const today = new Date().toISOString().split('T')[0]
-    const id = ulid()                          // ULID sebagai document ID
-    await setDoc(doc(db, 'pengajuan', id), {
+    const id = ulid()
+    const initLog: LogEntry = {
+      waktu: new Date().toISOString(),
+      aksi: 'Pengajuan dibuat',
+      oleh: data.namaUser || data.createdBy || 'Kapal',
+      detail: `${data.items.length} barang`,
+    }
+    await setDoc(doc(getDb(), 'pengajuan', id), {
       status: 'diajukan',
       tanggalPengajuan: today,
       noSPB: data.noSPB,
@@ -138,22 +205,33 @@ export const useStore = () => {
       createdBy: data.createdBy || '',
       reminderCount: 0,
       reminderSent: false,
+      log: [initLog],
       createdAt: serverTimestamp(),
     })
     addNotif(`SPB ${data.noSPB} — ${data.items.length} barang dikirim ke Purchasing`)
     return id
   }
 
-  const updatePO = async (id: string, updates: Partial<PengajuanPO>) => {
-    const ref = doc(db, 'pengajuan', id)
-    const { id: _id, ...rest } = updates as PengajuanPO & { id: string }
-    await updateDoc(ref, { ...rest, updatedAt: serverTimestamp() })
+  const updatePO = async (id: string, updates: Partial<PengajuanPO>, logEntry?: { aksi: string; oleh: string; detail?: string }) => {
+    const ref = doc(getDb(), 'pengajuan', id)
+    const { id: _id, log: _log, ...rest } = updates as PengajuanPO & { id: string }
+    const payload: Record<string, unknown> = { ...rest, updatedAt: serverTimestamp() }
+    if (logEntry) {
+      payload.log = arrayUnion({
+        waktu: new Date().toISOString(),
+        aksi: logEntry.aksi,
+        oleh: logEntry.oleh,
+        detail: logEntry.detail,
+      })
+    }
+    await updateDoc(ref, payload)
   }
 
   const updateItemInstalasi = async (
     poId: string,
     itemIndex: number,
-    data: { lokasiPasang: string; teknisi: string; fotoBukti?: string }
+    data: { lokasiPasang: string; teknisi: string; fotoBukti?: string; catatan?: string },
+    namaUser?: string,
   ) => {
     const po = poList.value.find(p => p.id === poId)
     if (!po) return
@@ -166,14 +244,22 @@ export const useStore = () => {
           teknisi: data.teknisi,
           tanggalDipasang: new Date().toISOString().split('T')[0],
           ...(data.fotoBukti ? { fotoBukti: data.fotoBukti } : {}),
+          ...(data.catatan ? { catatan: data.catatan } : {}),
         }
       }
       return item
     })
     const allDone = updatedItems.every((i: ItemBarang) => i.statusInstalasi === 'terpasang')
-    await updateDoc(doc(db, 'pengajuan', poId), {
+    const logEntry: LogEntry = {
+      waktu: new Date().toISOString(),
+      aksi: `Barang dipasang: ${po.items[itemIndex]?.nama}`,
+      oleh: namaUser || data.teknisi,
+      detail: `Lokasi: ${data.lokasiPasang}`,
+    }
+    await updateDoc(doc(getDb(), 'pengajuan', poId), {
       items: updatedItems,
       ...(allDone ? { status: 'selesai' } : {}),
+      log: arrayUnion(logEntry),
       updatedAt: serverTimestamp(),
     })
     if (allDone) addNotif(`Semua barang SPB ${po.noSPB || poId} telah terpasang!`)
@@ -189,17 +275,16 @@ export const useStore = () => {
   }
 
   const markAllRead = () => {
-    notifications.value.forEach((n: { dibaca: boolean }) => (n.dibaca = true))
+    notifications.value.forEach((n) => { n.dibaca = true })
   }
 
   const markOneRead = (id: string) => {
-    const n = notifications.value.find((n: { id: string }) => n.id === id)
+    const n = notifications.value.find((n) => n.id === id)
     if (n) n.dibaca = true
   }
 
   const unreadCount = computed(() => notifications.value.filter(n => !n.dibaca).length)
 
-  // Statistik
   const stats = computed(() => ({
     diajukan: poList.value.filter(p => p.status === 'diajukan').length,
     dikirim: poList.value.filter(p => p.status === 'dikirim').length,
@@ -209,17 +294,17 @@ export const useStore = () => {
     belumPasang: poList.value.filter(p =>
       p.status === 'dikonfirmasi' && p.items.some(i => i.statusInstalasi !== 'terpasang')
     ).length,
+    // Fitur 7: count urgent
+    urgentDiajukan: poList.value.filter(p =>
+      p.status === 'diajukan' && p.items.some(i => i.urgensi === 'tinggi')
+    ).length,
   }))
 
   const statusLabel = (status: StatusPO) => {
     const map: Record<StatusPO, string> = {
-      draft: 'Draft',
-      diajukan: 'Diajukan',
-      divalidasi: 'Divalidasi',
-      dikirim: 'Dalam Pengiriman',
-      tiba: 'Tiba di Pelabuhan',
-      dikonfirmasi: 'Dikonfirmasi',
-      selesai: 'Selesai',
+      draft: 'Draft', diajukan: 'Diajukan', divalidasi: 'Divalidasi',
+      dikirim: 'Dalam Pengiriman', tiba: 'Tiba di Pelabuhan',
+      dikonfirmasi: 'Dikonfirmasi', selesai: 'Selesai',
     }
     return map[status] || status
   }
@@ -260,6 +345,7 @@ export const useStore = () => {
     createPO,
     updatePO,
     updateItemInstalasi,
+    addLog,
     addNotif,
     markAllRead,
     markOneRead,

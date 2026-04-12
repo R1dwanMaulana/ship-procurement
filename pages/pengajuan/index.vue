@@ -11,10 +11,25 @@
       </NuxtLink>
     </div>
 
-    <!-- Search -->
-    <div class="relative">
-      <AppIcon name="search" :size="14" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-      <Input v-model="search" class="pl-8 h-8 text-sm" placeholder="Cari PO, SPB, kapal, barang..." />
+    <!-- Search + Filter Kapal -->
+    <div class="space-y-2">
+      <div class="relative">
+        <AppIcon name="search" :size="14" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input v-model="search" class="pl-8 h-8 text-sm" placeholder="Cari SPB, kapal, barang..." />
+      </div>
+      <!-- Fitur 3: filter per kapal -->
+      <div v-if="role === 'purchasing'" class="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+        <button @click="filterKapal = ''"
+          :class="['flex-shrink-0 h-6 px-2.5 rounded-md text-xs transition-colors',
+            filterKapal === '' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground']">
+          Semua Kapal
+        </button>
+        <button v-for="kapal in kapalList" :key="kapal" @click="filterKapal = kapal"
+          :class="['flex-shrink-0 h-6 px-2.5 rounded-md text-xs transition-colors',
+            filterKapal === kapal ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground']">
+          {{ kapal }}
+        </button>
+      </div>
     </div>
 
     <!-- Tabs -->
@@ -55,7 +70,7 @@
         </div>
 
         <!-- Info chips -->
-        <div v-if="po.lokasiDocking || po.noTracking || po.tanggalTiba" class="flex flex-wrap gap-1.5">
+        <div v-if="po.lokasiDocking || po.noTracking || po.tanggalTiba || po.estimasiTiba" class="flex flex-wrap gap-1.5">
           <span v-if="po.lokasiDocking" class="inline-flex items-center gap-1 text-xs border border-border rounded-sm px-2 py-0.5 text-muted-foreground">
             <AppIcon name="pin" :size="10" /> {{ po.lokasiDocking }}
           </span>
@@ -63,7 +78,11 @@
             <AppIcon name="truck" :size="10" /> {{ po.noTracking }}
           </span>
           <span v-if="po.tanggalTiba" class="inline-flex items-center gap-1 text-xs border border-border rounded-sm px-2 py-0.5 text-muted-foreground">
-            <AppIcon name="calendar" :size="10" /> {{ po.tanggalTiba }}
+            <AppIcon name="calendar" :size="10" /> Tiba: {{ po.tanggalTiba }}
+          </span>
+          <!-- Fitur 1: estimasi tiba -->
+          <span v-if="po.estimasiTiba && !po.tanggalTiba" class="inline-flex items-center gap-1 text-xs border border-border rounded-sm px-2 py-0.5 text-muted-foreground">
+            <AppIcon name="calendar" :size="10" /> Est. tiba: {{ po.estimasiTiba }}
           </span>
         </div>
 
@@ -100,6 +119,8 @@
                 <Badge variant="outline" class="text-xs py-0">{{ item.urgensi }}</Badge>
               </div>
               <p class="text-xs text-muted-foreground mt-0.5">{{ item.spesifikasi }}</p>
+              <!-- Fitur 6: catatan per item -->
+              <p v-if="item.catatan" class="text-xs text-muted-foreground mt-0.5 italic">{{ item.catatan }}</p>
               <div v-if="item.statusInstalasi === 'terpasang'" class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
                 <span v-if="item.lokasiPasang" class="flex items-center gap-1"><AppIcon name="pin" :size="10" />{{ item.lokasiPasang }}</span>
                 <span v-if="item.teknisi" class="flex items-center gap-1"><AppIcon name="user" :size="10" />{{ item.teknisi }}</span>
@@ -127,7 +148,7 @@
         <!-- Actions -->
         <div class="flex flex-wrap gap-2 pt-1 border-t border-border">
           <template v-if="role === 'kapal'">
-            <Button v-if="po.status === 'tiba'" size="sm" class="flex-1 gap-1" @click="konfirmasiTerima(po.id)">
+            <Button v-if="po.status === 'tiba'" size="sm" class="flex-1 gap-1" @click="askConfirm('terima', po.id)">
               <AppIcon name="check" :size="13" /> Konfirmasi Terima
             </Button>
           </template>
@@ -138,13 +159,17 @@
             <Button v-if="po.status === 'divalidasi'" size="sm" class="flex-1 gap-1" @click="openKirimModal(po)">
               <AppIcon name="truck" :size="13" /> Input Pengiriman
             </Button>
-            <Button v-if="po.status === 'dikirim'" variant="outline" size="sm" class="flex-1 gap-1" @click="tandaiTiba(po.id)">
+            <Button v-if="po.status === 'dikirim'" variant="outline" size="sm" class="flex-1 gap-1" @click="askConfirm('tiba', po.id)">
               <AppIcon name="package" :size="13" /> Tandai Tiba
             </Button>
-            <Button v-if="po.status === 'selesai'" variant="ghost" size="sm" class="gap-1" @click="closingPO(po.id)">
+            <Button v-if="po.status === 'selesai'" variant="ghost" size="sm" class="gap-1" @click="askConfirm('closing', po.id)">
               <AppIcon name="file" :size="13" /> Closing PO
             </Button>
           </template>
+          <!-- Fitur 5: history log -->
+          <Button variant="ghost" size="sm" class="gap-1 text-muted-foreground" @click="openLog(po)">
+            <AppIcon name="list" :size="13" /> Log
+          </Button>
           <NuxtLink :to="`/tracking?id=${po.id}`">
             <Button variant="ghost" size="sm" class="gap-1 text-muted-foreground">
               <AppIcon name="map" :size="13" /> Tracking
@@ -189,6 +214,11 @@
         <label class="text-sm font-medium">Nomor Tracking</label>
         <Input v-model="formKirim.noTracking" placeholder="TRK-2026-XXX" />
       </div>
+      <!-- Fitur 1: estimasi tiba -->
+      <div class="space-y-1.5">
+        <label class="text-sm font-medium">Estimasi Tiba <span class="text-muted-foreground font-normal">(opsional)</span></label>
+        <Input v-model="formKirim.estimasiTiba" type="date" />
+      </div>
       <div class="flex gap-2">
         <Button variant="outline" class="flex-1" @click="showKirimModal = false">Batal</Button>
         <Button class="flex-1 gap-1" :disabled="!formKirim.noTracking" @click="submitKirim">
@@ -211,6 +241,11 @@
       <div class="space-y-1.5">
         <label class="text-sm font-medium">Nama Teknisi</label>
         <Input v-model="formPasang.teknisi" placeholder="Nama teknisi" />
+      </div>
+      <!-- Fitur 6: catatan per item -->
+      <div class="space-y-1.5">
+        <label class="text-sm font-medium">Catatan <span class="text-muted-foreground font-normal">(opsional)</span></label>
+        <Input v-model="formPasang.catatan" placeholder="Catatan pemasangan..." />
       </div>
       <div class="space-y-1.5">
         <label class="text-sm font-medium">Foto Bukti <span class="text-muted-foreground font-normal">(opsional)</span></label>
@@ -237,6 +272,39 @@
         </Button>
       </div>
     </Sheet>
+
+    <!-- Fitur 4: Confirm Dialogs -->
+    <ConfirmDialog
+      v-model="confirmState.show"
+      :title="confirmState.title"
+      :message="confirmState.message"
+      :confirm-label="confirmState.label"
+      @confirm="confirmState.action"
+    />
+
+    <!-- Fitur 5: Log Sheet -->
+    <Sheet v-model="showLogModal">
+      <h3 class="font-semibold">Riwayat Aktivitas</h3>
+      <p class="text-xs text-muted-foreground">{{ logPO?.noSPB }} · {{ logPO?.namaKapal }}</p>
+      <div v-if="!logPO?.log?.length" class="py-6 text-center text-sm text-muted-foreground">
+        Belum ada riwayat
+      </div>
+      <div v-else class="space-y-3">
+        <div v-for="(entry, i) in [...(logPO?.log || [])].reverse()" :key="i"
+          class="flex gap-3">
+          <div class="flex flex-col items-center">
+            <div class="w-2 h-2 rounded-full bg-foreground mt-1 flex-shrink-0" />
+            <div v-if="i < (logPO?.log?.length || 0) - 1" class="w-px flex-1 bg-border mt-1" />
+          </div>
+          <div class="pb-3 min-w-0">
+            <p class="text-sm font-medium">{{ entry.aksi }}</p>
+            <p class="text-xs text-muted-foreground mt-0.5">{{ entry.oleh }}</p>
+            <p v-if="entry.detail" class="text-xs text-muted-foreground">{{ entry.detail }}</p>
+            <p class="text-xs text-muted-foreground mt-0.5">{{ formatWaktu(entry.waktu) }}</p>
+          </div>
+        </div>
+      </div>
+    </Sheet>
   </div>
 </template>
 
@@ -251,9 +319,16 @@ const route = useRoute()
 const highlightId = computed(() => route.query.highlight as string || '')
 const activeTab = ref('semua')
 const search = ref('')
+const filterKapal = ref('')  // Fitur 3
 
 const statusVariant = (status: StatusPO): any =>
   status === 'selesai' ? 'outline' : 'secondary'
+
+// Fitur 3: unique kapal list
+const kapalList = computed(() => {
+  const set = new Set(poList.value.map(p => p.namaKapal).filter(Boolean) as string[])
+  return Array.from(set)
+})
 
 onMounted(() => {
   if (highlightId.value) {
@@ -281,6 +356,8 @@ const filteredList = computed(() => {
       (po.namaKapal || '').toLowerCase().includes(q) || po.items.some(i => i.nama.toLowerCase().includes(q))
     )
   }
+  // Fitur 3: filter kapal
+  if (filterKapal.value) list = list.filter(po => po.namaKapal === filterKapal.value)
   if (activeTab.value === 'semua') return list
   if (activeTab.value === 'proses') return list.filter(p => ['divalidasi','dikirim'].includes(p.status))
   if (activeTab.value === 'tiba') return list.filter(p => ['tiba','dikonfirmasi'].includes(p.status))
@@ -290,14 +367,66 @@ const filteredList = computed(() => {
 
 const selectedPO = ref<PengajuanPO | null>(null)
 const showValidasiModal = ref(false), showKirimModal = ref(false), showPasangModal = ref(false)
+const showLogModal = ref(false)
+const logPO = ref<PengajuanPO | null>(null)
 const formValidasi = ref({ lokasiDocking: '', catatan: '' })
-const formKirim = ref({ noTracking: '' })
-const formPasang = ref({ lokasi: '', teknisi: '' })
+const formKirim = ref({ noTracking: '', estimasiTiba: '' })  // Fitur 1
+const formPasang = ref({ lokasi: '', teknisi: '', catatan: '' })  // Fitur 6
 const pasangTarget = ref({ poId: '', itemIndex: 0, namaBarang: '', noSPB: '', namaKapal: '' })
 const fotoInputRef = ref<HTMLInputElement | null>(null)
 const fotoFile = ref<File | null>(null)
 const fotoPreview = ref<string | null>(null)
 const uploadingFoto = ref(false)
+
+// Fitur 4: confirm dialog state
+const confirmState = ref({
+  show: false,
+  title: '',
+  message: '',
+  label: '',
+  action: () => {},
+})
+
+const askConfirm = (type: string, id: string) => {
+  const configs: Record<string, { title: string; message: string; label: string; action: () => void }> = {
+    terima: {
+      title: 'Konfirmasi Penerimaan',
+      message: 'Pastikan barang sudah diterima dan sesuai dengan SPB.',
+      label: 'Ya, Konfirmasi',
+      action: () => konfirmasiTerima(id),
+    },
+    tiba: {
+      title: 'Tandai Tiba di Pelabuhan?',
+      message: 'Status akan berubah ke "Tiba di Pelabuhan" dan kapal akan dinotifikasi.',
+      label: 'Tandai Tiba',
+      action: () => tandaiTiba(id),
+    },
+    closing: {
+      title: 'Closing PO?',
+      message: 'PO akan ditutup dan tidak bisa diubah lagi.',
+      label: 'Closing',
+      action: () => closingPO(id),
+    },
+  }
+  const cfg = configs[type]
+  if (!cfg) return
+  confirmState.value = { show: true, ...cfg }
+}
+
+// Fitur 5: open log
+const openLog = (po: PengajuanPO) => {
+  logPO.value = po
+  showLogModal.value = true
+}
+
+const formatWaktu = (iso: string) => {
+  try {
+    return new Date(iso).toLocaleString('id-ID', {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    })
+  } catch { return iso }
+}
 
 const triggerFotoInput = () => fotoInputRef.value?.click()
 const onFotoChange = (e: Event) => {
@@ -318,41 +447,64 @@ const openValidasiModal = (po: PengajuanPO) => {
 }
 const openKirimModal = (po: PengajuanPO) => {
   selectedPO.value = po
-  formKirim.value = { noTracking: `TRK-${po.id.slice(-4).toUpperCase()}-SBY` }
+  formKirim.value = { noTracking: `TRK-${po.id.slice(-4).toUpperCase()}-SBY`, estimasiTiba: '' }
   showKirimModal.value = true
 }
 const openPasangModal = (poId: string, itemIndex: number, namaBarang: string) => {
   const po = poList.value.find(p => p.id === poId)
   pasangTarget.value = { poId, itemIndex, namaBarang, noSPB: po?.noSPB || '', namaKapal: po?.namaKapal || '' }
-  formPasang.value = { lokasi: '', teknisi: '' }
+  formPasang.value = { lokasi: '', teknisi: '', catatan: '' }
   clearFoto()
   showPasangModal.value = true
 }
 
 const submitValidasi = async () => {
   if (!selectedPO.value) return
-  await updatePO(selectedPO.value.id, { status: 'divalidasi', lokasiDocking: formValidasi.value.lokasiDocking, catatanPurchasing: formValidasi.value.catatan } as any)
+  await updatePO(selectedPO.value.id, {
+    status: 'divalidasi',
+    lokasiDocking: formValidasi.value.lokasiDocking,
+    catatanPurchasing: formValidasi.value.catatan,
+  } as any, { aksi: 'Divalidasi', oleh: userProfile.value?.nama || 'Purchasing', detail: `Docking: ${formValidasi.value.lokasiDocking}` })
   showValidasiModal.value = false
 }
 const submitKirim = async () => {
   if (!selectedPO.value) return
-  await updatePO(selectedPO.value.id, { status: 'dikirim', noTracking: formKirim.value.noTracking } as any)
+  await updatePO(selectedPO.value.id, {
+    status: 'dikirim',
+    noTracking: formKirim.value.noTracking,
+    ...(formKirim.value.estimasiTiba ? { estimasiTiba: formKirim.value.estimasiTiba } : {}),
+  } as any, { aksi: 'Dikirim', oleh: userProfile.value?.nama || 'Purchasing', detail: `Tracking: ${formKirim.value.noTracking}` })
   showKirimModal.value = false
 }
-const tandaiTiba = async (id: string) => await updatePO(id, { status: 'tiba', tanggalTiba: new Date().toISOString().split('T')[0] } as any)
+const tandaiTiba = async (id: string) => {
+  await updatePO(id, { status: 'tiba', tanggalTiba: new Date().toISOString().split('T')[0] } as any,
+    { aksi: 'Tiba di pelabuhan', oleh: userProfile.value?.nama || 'Purchasing' })
+}
 const konfirmasiTerima = async (id: string) => {
   const po = poList.value.find(p => p.id === id)
   if (!po) return
-  await updatePO(id, { status: 'dikonfirmasi', items: po.items.map(i => ({ ...i, statusInstalasi: 'belum' as const })), tanggalTiba: new Date().toISOString().split('T')[0] } as any)
+  await updatePO(id, {
+    status: 'dikonfirmasi',
+    items: po.items.map(i => ({ ...i, statusInstalasi: 'belum' as const })),
+    tanggalTiba: new Date().toISOString().split('T')[0],
+  } as any, { aksi: 'Penerimaan dikonfirmasi', oleh: userProfile.value?.nama || 'Kapal' })
 }
 const submitPasang = async () => {
   uploadingFoto.value = true
   try {
     let fotoBuktiUrl: string | undefined
     if (fotoFile.value) fotoBuktiUrl = await uploadFoto(fotoFile.value, pasangTarget.value.poId, pasangTarget.value.itemIndex)
-    await updateItemInstalasi(pasangTarget.value.poId, pasangTarget.value.itemIndex, { lokasiPasang: formPasang.value.lokasi, teknisi: formPasang.value.teknisi, fotoBukti: fotoBuktiUrl })
+    await updateItemInstalasi(
+      pasangTarget.value.poId,
+      pasangTarget.value.itemIndex,
+      { lokasiPasang: formPasang.value.lokasi, teknisi: formPasang.value.teknisi, fotoBukti: fotoBuktiUrl, catatan: formPasang.value.catatan },
+      userProfile.value?.nama,
+    )
     showPasangModal.value = false; clearFoto()
   } finally { uploadingFoto.value = false }
 }
-const closingPO = async (id: string) => await updatePO(id, { status: 'selesai' } as any)
+const closingPO = async (id: string) => {
+  await updatePO(id, { status: 'selesai' } as any,
+    { aksi: 'PO ditutup (closing)', oleh: userProfile.value?.nama || 'Purchasing' })
+}
 </script>

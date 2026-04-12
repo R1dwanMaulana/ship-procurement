@@ -17,7 +17,6 @@ export default defineNuxtPlugin(() => {
   }
 
   console.log('[Firebase] apiKey:', firebaseConfig.apiKey ? '✓' : '✗ KOSONG — cek .env')
-  console.log('[Firebase] projectId:', firebaseConfig.projectId || '✗ KOSONG')
 
   // Hindari inisialisasi ulang jika sudah ada
   const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig)

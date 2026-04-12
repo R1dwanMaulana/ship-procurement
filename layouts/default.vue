@@ -84,11 +84,12 @@ const isActive = (path: string) => path === '/' ? route.path === '/' : route.pat
 const navItems = computed(() => {
   const base = [
     { to: '/', icon: 'home', label: 'Beranda', badge: 0 },
-    { to: '/pengajuan', icon: 'list', label: 'Pengajuan', badge: 0 },
+    { to: '/pengajuan', icon: 'list', label: 'Pengajuan', badge: stats.value.urgentDiajukan },
     { to: '/tracking', icon: 'map', label: 'Tracking', badge: 0 },
   ]
   if (userProfile.value?.role === 'purchasing')
     base.push({ to: '/laporan', icon: 'chart', label: 'Laporan', badge: stats.value.belumPasang })
+  base.push({ to: '/profil', icon: 'user', label: 'Profil', badge: 0 })
   return base
 })
 </script>
