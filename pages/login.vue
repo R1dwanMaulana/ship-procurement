@@ -20,17 +20,15 @@
 
         <form @submit.prevent="handleLogin" class="space-y-3">
           <div class="space-y-1.5">
-            <label class="text-sm font-medium">Email</label>
-            <!-- type="text" bukan "email" untuk hindari browser/extension validation -->
+            <label class="text-sm font-medium">Username</label>
             <input
-              ref="emailInputRef"
+              ref="usernameInputRef"
               type="text"
-              inputmode="email"
-              autocomplete="email"
+              autocomplete="username"
               autocorrect="off"
               autocapitalize="none"
               spellcheck="false"
-              placeholder="email@example.com"
+              placeholder="contoh: kapten_ahmad"
               class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors"
             />
           </div>
@@ -72,38 +70,35 @@ const { init: initTheme } = useTheme()
 
 onMounted(() => initTheme())
 
-const emailInputRef = ref<HTMLInputElement | null>(null)
+const usernameInputRef = ref<HTMLInputElement | null>(null)
 const passwordInputRef = ref<HTMLInputElement | null>(null)
 const loading = ref(false)
 const showPass = ref(false)
 const errorMsg = ref('')
 
 const handleLogin = async () => {
-  // Baca langsung dari DOM untuk bypass extension interference
-  const emailVal = (emailInputRef.value?.value ?? '').trim()
+  const usernameVal = (usernameInputRef.value?.value ?? '').trim()
   const passwordVal = passwordInputRef.value?.value ?? ''
 
-  if (!emailVal) {
-    errorMsg.value = 'Email tidak boleh kosong.'
+  if (!usernameVal) {
+    errorMsg.value = 'Username tidak boleh kosong.'
     return
   }
 
   errorMsg.value = ''
   loading.value = true
   try {
-    await login(emailVal, passwordVal)
+    await login(usernameVal, passwordVal)
     router.push('/')
   } catch (e: unknown) {
     console.error('Login error:', e)
     const code = (e as { code?: string })?.code
     if (['auth/user-not-found', 'auth/wrong-password', 'auth/invalid-credential'].includes(code || ''))
-      errorMsg.value = 'Email atau password salah.'
+      errorMsg.value = 'Username atau password salah.'
     else if (code === 'auth/too-many-requests')
-      errorMsg.value = 'Terlalu banyak percobaan.'
+      errorMsg.value = 'Terlalu banyak percobaan. Coba lagi nanti.'
     else if (code === 'auth/network-request-failed')
       errorMsg.value = 'Tidak ada koneksi internet.'
-    else if (code === 'auth/invalid-email')
-      errorMsg.value = `Format email tidak valid. (${emailVal})`
     else
       errorMsg.value = `Error: ${code || 'unknown'}`
   } finally { loading.value = false }

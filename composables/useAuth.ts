@@ -4,11 +4,12 @@ import {
   onAuthStateChanged,
   type User,
 } from 'firebase/auth'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore'
 
 export interface UserProfile {
   uid: string
   email: string
+  username: string   // username untuk login
   nama: string
   role: 'kapal' | 'purchasing'
   namaKapal?: string
@@ -60,7 +61,17 @@ export const useAuth = () => {
     }
   }
 
-  const login = async (email: string, password: string) => {
+  const login = async (username: string, password: string) => {
+    // Cari email berdasarkan username di Firestore
+    const usersRef = collection(getDb(), 'users')
+    const q = query(usersRef, where('username', '==', username.trim().toLowerCase()))
+    const snap = await getDocs(q)
+
+    if (snap.empty) {
+      throw { code: 'auth/user-not-found' }
+    }
+
+    const email = snap.docs[0].data().email as string
     const cred = await signInWithEmailAndPassword(getAuth(), email, password)
     await fetchProfile(cred.user.uid)
     return cred.user
