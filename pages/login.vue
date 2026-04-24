@@ -1,5 +1,6 @@
 <template>
   <div class="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+    <ToastNotif />
     <div class="w-full max-w-sm space-y-6">
 
       <!-- Logo -->

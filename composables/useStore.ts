@@ -217,12 +217,14 @@ export const useStore = () => {
     const { id: _id, log: _log, ...rest } = updates as PengajuanPO & { id: string }
     const payload: Record<string, unknown> = { ...rest, updatedAt: serverTimestamp() }
     if (logEntry) {
-      payload.log = arrayUnion({
+      // Hapus field undefined sebelum kirim ke Firestore
+      const entry: Record<string, string> = {
         waktu: new Date().toISOString(),
         aksi: logEntry.aksi,
         oleh: logEntry.oleh,
-        detail: logEntry.detail,
-      })
+      }
+      if (logEntry.detail !== undefined) entry.detail = logEntry.detail
+      payload.log = arrayUnion(entry)
     }
     await updateDoc(ref, payload)
   }
@@ -237,20 +239,21 @@ export const useStore = () => {
     if (!po) return
     const updatedItems = po.items.map((item, i) => {
       if (i === itemIndex) {
-        return {
+        const updated: ItemBarang = {
           ...item,
           statusInstalasi: 'terpasang' as const,
           lokasiPasang: data.lokasiPasang,
           teknisi: data.teknisi,
           tanggalDipasang: new Date().toISOString().split('T')[0],
-          ...(data.fotoBukti ? { fotoBukti: data.fotoBukti } : {}),
-          ...(data.catatan ? { catatan: data.catatan } : {}),
         }
+        if (data.fotoBukti) updated.fotoBukti = data.fotoBukti
+        if (data.catatan) updated.catatan = data.catatan
+        return updated
       }
       return item
     })
     const allDone = updatedItems.every((i: ItemBarang) => i.statusInstalasi === 'terpasang')
-    const logEntry: LogEntry = {
+    const logEntry: Record<string, string> = {
       waktu: new Date().toISOString(),
       aksi: `Barang dipasang: ${po.items[itemIndex]?.nama}`,
       oleh: namaUser || data.teknisi,

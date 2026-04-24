@@ -1,5 +1,7 @@
 <template>
   <div class="min-h-screen bg-background flex flex-col max-w-md mx-auto">
+    <!-- Toast Notification -->
+    <ToastNotif />
 
     <!-- Header -->
     <header class="sticky top-0 z-50 bg-background border-b border-border h-14 px-4 flex items-center justify-between"
@@ -64,14 +66,19 @@
 const { userProfile, logout } = useAuth()
 const { unreadCount, startListening, stopListening, stats } = useStore()
 const { isDark, toggle: toggleTheme, init: initTheme } = useTheme()
+const { start: startRealtimeNotif, stop: stopRealtimeNotif } = useRealtimeNotif()
 const router = useRouter()
 const route = useRoute()
 
 onMounted(() => {
   initTheme()
   startListening(userProfile.value?.role)
+  startRealtimeNotif()
 })
-onUnmounted(() => stopListening())
+onUnmounted(() => {
+  stopListening()
+  stopRealtimeNotif()
+})
 
 const handleLogout = async () => {
   stopListening()
